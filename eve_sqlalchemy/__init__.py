@@ -50,6 +50,26 @@ class SQL(DataLayer):
 
         self.register_schema(app)
 
+    def get_polymorphic_class(SQL, cls, data):
+        column = cls.__mapper__.polymorphic_on
+        if column is None:
+            print 'The Class is not polymorphic'
+            # The column is not polymorphic so the Class can be returned as-is
+            return cls
+
+        identity = data.get(column.name)
+        if not identity:
+            print 'Missing value for "' + column.name + '"'
+            raise ValueError('Missing value for "' + column.name + '"', data)
+
+        mapper = cls.__mapper__.polymorphic_map.get(identity)
+        if mapper:
+            return mapper.class_
+        else:
+            print 'Missing polymorphic_identity definition for "' + identity + '"'
+            raise ValueError('Missing polymorphic_identity definition for "' + identity + '"')
+        return cls
+
     @classmethod
     def lookup_model(cls, model_name):
         """
@@ -188,6 +208,7 @@ class SQL(DataLayer):
         rv = []
         model, filter_, fields_, _ = self._datasource_ex(resource)
         for document in doc_or_docs:
+            model = self.get_polymorphic_class(model, document)
             model_instance = model(**document)
             self.driver.session.add(model_instance)
             self.driver.session.commit()
