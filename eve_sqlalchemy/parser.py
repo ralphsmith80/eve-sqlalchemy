@@ -205,7 +205,6 @@ class SQLAVisitor(ast.NodeVisitor):
     def visit_Compare(self, node):
         """ Compare operator handler.
         """
-
         self.visit(node.left)
         left = getattr(self.model, self.current_value)
 

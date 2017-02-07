@@ -19,7 +19,8 @@ from eve.io.base import DataLayer
 from eve.utils import config, debug_error_message, str_to_date
 from .parser import parse, parse_dictionary, ParseError, sqla_op, parse_sorting
 from .structures import SQLAResultCollection
-from .utils import dict_update, validate_filters, sqla_object_to_dict, extract_sort_arg
+from .utils import dict_update, validate_filters, sqla_object_to_dict, extract_sort_arg, \
+    rename_relationship_fields_in_dict
 
 
 db = flask_sqlalchemy.SQLAlchemy()
@@ -185,8 +186,11 @@ class SQL(DataLayer):
             self._datasource_ex(resource, [], client_projection, None,
                                 client_embedded)
 
-        if isinstance(lookup.get(config.ID_FIELD), dict) \
-                or isinstance(lookup.get(config.ID_FIELD), list):
+        id_field = self._id_field(resource)
+        for k, v in lookup.items():
+            lookup = {id_field: v}
+        if isinstance(lookup.get(id_field), dict) \
+                or isinstance(lookup.get(id_field), list):
             # very dummy way to get the related object
             # that commes from embeddable parameter
             return lookup
@@ -326,6 +330,11 @@ class SQL(DataLayer):
             return query.filter_by(*filter_).count() == 0
         else:
             return query.count() == 0
+
+    def _id_field(self, resource):
+        config = self.driver.app.config
+        schema = config['DOMAIN'][resource]
+        return schema.get('id_field', config['ID_FIELD'])
 
     def _client_embedded(self, req):
         """ Returns a properly parsed client embeddable if available.
